@@ -51,6 +51,7 @@
   <div id="loading">Loading...</div>
 
   <script type="module">
+    import * as THREE from 'three';
     import * as GaussianSplats3D from 'https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.5/build/gaussian-splats-3d.module.min.js';
 
     // --- CONFIG ---
@@ -73,7 +74,6 @@
       renderMode: GaussianSplats3D.RenderMode.Always,
       sceneRevealMode: GaussianSplats3D.SceneRevealMode.Gradual,
       logLevel: GaussianSplats3D.LogLevel.None,
-      backgroundColor: new GaussianSplats3D.THREE.Color(0xffffff),
     });
 
     await viewer.addSplatScene(SPLAT_FILE, {
@@ -81,6 +81,9 @@
       showLoadingUI: false,
       progressiveLoad: false,
     });
+
+    // Set white background on the renderer directly
+    viewer.renderer.setClearColor(0xffffff, 1);
 
     viewer.start();
 
@@ -91,7 +94,6 @@
 
     // --- AUTO-ROTATION ---
     let angle = 0;
-    const { THREE } = GaussianSplats3D;
     const target = new THREE.Vector3(0, LOOK_AT_HEIGHT, 0);
 
     function animate() {
