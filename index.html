@@ -4,6 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jordan Layao</title>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+    }
+  }
+  </script>
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
@@ -44,16 +54,13 @@
     import * as GaussianSplats3D from 'https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.5/build/gaussian-splats-3d.module.min.js';
 
     // --- CONFIG ---
-    // Change 'model.splat' to whatever your file is named
-    const SPLAT_FILE = './model.splat';
+    const SPLAT_FILE     = './model.splat';
+    const CAMERA_HEIGHT  = 0.8;
+    const ORBIT_RADIUS   = 2.8;
+    const ORBIT_SPEED    = 0.004;
+    const LOOK_AT_HEIGHT = 0.6;
 
-    // Camera orbit settings
-    const CAMERA_HEIGHT   = 0.8;   // vertical position (raise/lower)
-    const ORBIT_RADIUS    = 2.8;   // distance from model
-    const ORBIT_SPEED     = 0.004; // rotation speed (lower = slower)
-    const LOOK_AT_HEIGHT  = 0.6;   // where the camera points vertically
-
-    // --- VIEWER SETUP ---
+    // --- VIEWER ---
     const viewer = new GaussianSplats3D.Viewer({
       selfDrivenMode: false,
       sharedMemoryForWorkers: false,
@@ -75,10 +82,9 @@
       progressiveLoad: false,
     });
 
-    // Kick off render loop
     viewer.start();
 
-    // --- HIDE LOADING ---
+    // Hide loading screen
     const loading = document.getElementById('loading');
     loading.classList.add('hidden');
     setTimeout(() => loading.remove(), 700);
@@ -90,17 +96,15 @@
 
     function animate() {
       angle += ORBIT_SPEED;
-
-      const x = Math.sin(angle) * ORBIT_RADIUS;
-      const z = Math.cos(angle) * ORBIT_RADIUS;
-
-      viewer.camera.position.set(x, CAMERA_HEIGHT, z);
+      viewer.camera.position.set(
+        Math.sin(angle) * ORBIT_RADIUS,
+        CAMERA_HEIGHT,
+        Math.cos(angle) * ORBIT_RADIUS
+      );
       viewer.camera.lookAt(target);
       viewer.camera.up.set(0, 1, 0);
-
       viewer.update();
       viewer.render();
-
       requestAnimationFrame(animate);
     }
 
