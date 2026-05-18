@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jordan Layao</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      font-family: sans-serif;
+      font-size: 13px;
+      color: #999;
+      letter-spacing: 0.05em;
+      z-index: 10;
+      transition: opacity 0.6s ease;
+    }
+    #loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">Loading...</div>
+
+  <script type="module">
+    import * as GaussianSplats3D from 'https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.5/build/gaussian-splats-3d.module.min.js';
+
+    // --- CONFIG ---
+    // Change 'model.splat' to whatever your file is named
+    const SPLAT_FILE = './model.splat';
+
+    // Camera orbit settings
+    const CAMERA_HEIGHT   = 0.8;   // vertical position (raise/lower)
+    const ORBIT_RADIUS    = 2.8;   // distance from model
+    const ORBIT_SPEED     = 0.004; // rotation speed (lower = slower)
+    const LOOK_AT_HEIGHT  = 0.6;   // where the camera points vertically
+
+    // --- VIEWER SETUP ---
+    const viewer = new GaussianSplats3D.Viewer({
+      selfDrivenMode: false,
+      sharedMemoryForWorkers: false,
+      useBuiltInControls: false,
+      ignoreDevicePixelRatio: false,
+      gpuAcceleratedSort: true,
+      halfPrecisionCovariancesOnGPU: true,
+      dynamicScene: false,
+      webXRMode: GaussianSplats3D.WebXRMode.None,
+      renderMode: GaussianSplats3D.RenderMode.Always,
+      sceneRevealMode: GaussianSplats3D.SceneRevealMode.Gradual,
+      logLevel: GaussianSplats3D.LogLevel.None,
+      backgroundColor: new GaussianSplats3D.THREE.Color(0xffffff),
+    });
+
+    await viewer.addSplatScene(SPLAT_FILE, {
+      splatAlphaRemovalThreshold: 5,
+      showLoadingUI: false,
+      progressiveLoad: false,
+    });
+
+    // Kick off render loop
+    viewer.start();
+
+    // --- HIDE LOADING ---
+    const loading = document.getElementById('loading');
+    loading.classList.add('hidden');
+    setTimeout(() => loading.remove(), 700);
+
+    // --- AUTO-ROTATION ---
+    let angle = 0;
+    const { THREE } = GaussianSplats3D;
+    const target = new THREE.Vector3(0, LOOK_AT_HEIGHT, 0);
+
+    function animate() {
+      angle += ORBIT_SPEED;
+
+      const x = Math.sin(angle) * ORBIT_RADIUS;
+      const z = Math.cos(angle) * ORBIT_RADIUS;
+
+      viewer.camera.position.set(x, CAMERA_HEIGHT, z);
+      viewer.camera.lookAt(target);
+      viewer.camera.up.set(0, 1, 0);
+
+      viewer.update();
+      viewer.render();
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
