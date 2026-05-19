@@ -152,7 +152,8 @@
       useBuiltInControls: DEBUG,
       ignoreDevicePixelRatio: false,
       gpuAcceleratedSort: false,
-      halfPrecisionCovariancesOnGPU: true,
+      enableSIMDInSort: false,
+      halfPrecisionCovariancesOnGPU: false,
       dynamicScene: DEBUG,
       webXRMode: GaussianSplats3D.WebXRMode.None,
       renderMode: GaussianSplats3D.RenderMode.Always,
@@ -169,13 +170,32 @@
     const { x, y, z } = CONFIG.modelRotationDeg;
     const s = CONFIG.modelScale;
 
-    await viewer.addSplatScene(CONFIG.splatFile, {
-      splatAlphaRemovalThreshold: 5,
-      showLoadingUI: false,
-      progressiveLoad: false,
-      rotation: eulerToQuaternion(x, y, z),
-      scale: [s, s, s],
-    });
+    // Fetch with a fresh response (cached 404/HTML breaks the splat parser)
+    const splatUrl = new URL(CONFIG.splatFile, location.origin).href;
+    let splatBlobUrl;
+    try {
+      const response = await fetch(splatUrl, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status} for ${splatUrl}`);
+      const data = await response.arrayBuffer();
+      if (data.byteLength < 1024) {
+        throw new Error(`model.splat looks invalid (${data.byteLength} bytes)`);
+      }
+      splatBlobUrl = URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' }));
+
+      await viewer.addSplatScene(splatBlobUrl, {
+        format: GaussianSplats3D.SceneFormat.Splat,
+        splatAlphaRemovalThreshold: 5,
+        showLoadingUI: false,
+        progressiveLoad: false,
+        rotation: eulerToQuaternion(x, y, z),
+        scale: [s, s, s],
+      });
+    } catch (err) {
+      console.error('Failed to load model.splat:', err);
+      throw err;
+    } finally {
+      if (splatBlobUrl) URL.revokeObjectURL(splatBlobUrl);
+    }
 
     viewer.loadingSpinner?.hide();
     viewer.loadingProgressBar?.hide();
