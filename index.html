@@ -110,19 +110,28 @@
     import * as THREE from 'three';
     import * as GaussianSplats3D from 'https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.5/build/gaussian-splats-3d.module.min.js';
 
+    // Resolve assets correctly on GitHub Pages (with or without trailing slash)
+    function assetPath(file) {
+      let base = location.pathname;
+      if (!base.endsWith('/')) {
+        base = base.includes('.') ? base.replace(/\/[^/]+$/, '/') : `${base}/`;
+      }
+      return base + file;
+    }
+
     // ─── CONFIG (Spline-style embed defaults) ───────────────────────────────
     const CONFIG = {
-      splatFile: './model.splat',
+      splatFile: assetPath('model.splat'),
       // Model orientation in degrees — set after tuning in ?debug=1
       modelRotationDeg: { x: 180, y: 0, z: 0 },
       // Model size (1 = original, 0.8 = 80%, etc.)
-      modelScale: 0.85,
+      modelScale: 0.7,
       // Camera auto-orbit (matches original Spline embed)
       autoRotate: true,
       orbitSpeed: 0.004,
       // Larger = camera farther away = model looks smaller
       orbitRadius: 3.2,
-      cameraHeight: 0.2,
+      cameraHeight: 0.1,
       lookAt: [0, 0, 0],
       background: 0xffffff,
     };
