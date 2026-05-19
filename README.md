@@ -19,11 +19,38 @@ Open [http://localhost:8000](http://localhost:8000)
 
 Add `?debug=1` to tune model rotation and log values to paste into `CONFIG.modelRotationDeg`.
 
+## GitHub setup (one time)
+
+This folder is a git repo. To create the GitHub repo and push:
+
+```bash
+chmod +x setup-github.sh
+./setup-github.sh
+```
+
+Or manually: [create `jlayao-3d` on GitHub](https://github.com/new), then:
+
+```bash
+git remote add origin https://github.com/jordanlayao/jlayao-3d.git
+git push -u origin main
+```
+
+## Sync changes to GitHub
+
+After editing `index.html` or `model.splat`:
+
+```bash
+git add -A
+git commit -m "Describe your change"
+git push
+```
+
+Or use **Source Control** in Cursor (branch icon) → stage → commit → push.
+
 ## GitHub Pages
 
-1. Push this folder to `jordanlayao/jlayao-3d` on GitHub (include `model.splat`).
-2. **Settings → Pages →** Source: **Deploy from branch** → `main` → `/ (root)`.
-3. Live URL: **https://jordanlayao.github.io/jlayao-3d/**
+1. Repo → **Settings → Pages** → Source: **Deploy from branch** → `main` → `/ (root)`.
+2. Live URL: **https://jordanlayao.github.io/jlayao-3d/**
 
 ## Framer embed
 
