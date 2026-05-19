@@ -4,16 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jordan Layao</title>
-
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
-    }
-  }
-  </script>
-
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
@@ -27,90 +17,215 @@
       width: 100% !important;
       height: 100% !important;
     }
-    #loading {
+    /* Hide gaussian-splats-3d built-in loading spinner / progress bar */
+    [class*="spinnerOuterContainer"],
+    [class*="messageContainer"],
+    .progressBarOuterContainer {
+      display: none !important;
+    }
+    .panel {
       position: fixed;
-      inset: 0;
+      z-index: 5;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      color: #444;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 12px 14px;
+      line-height: 1.45;
+    }
+    #controls-hint {
+      bottom: 16px;
+      left: 16px;
+      user-select: none;
+      pointer-events: none;
+    }
+    #model-panel {
+      top: 16px;
+      right: 16px;
+      width: 200px;
+    }
+    #model-panel h2 {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #222;
+    }
+    #model-panel label {
       display: flex;
       align-items: center;
-      justify-content: center;
-      background: #ffffff;
-      font-family: sans-serif;
-      font-size: 13px;
-      color: #999;
-      letter-spacing: 0.05em;
-      z-index: 10;
-      transition: opacity 0.6s ease;
+      gap: 8px;
+      margin-bottom: 8px;
     }
-    #loading.hidden {
-      opacity: 0;
-      pointer-events: none;
+    #model-panel label span {
+      width: 14px;
+      flex-shrink: 0;
+      font-weight: 500;
+      color: #666;
+    }
+    #model-panel input[type="range"] { flex: 1; accent-color: #333; }
+    #model-panel button {
+      width: 100%;
+      margin-top: 4px;
+      padding: 6px 0;
+      font-size: 11px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #f8f8f8;
+      cursor: pointer;
+    }
+    #model-panel button:hover { background: #eee; }
+    #debug-banner {
+      top: 16px;
+      left: 16px;
+      font-size: 11px;
+      color: #888;
     }
   </style>
 </head>
 <body>
-  <div id="loading">Loading...</div>
+  <div id="debug-banner" class="panel" hidden>Debug mode — copy rotation values into CONFIG</div>
+  <div id="controls-hint" class="panel" hidden>
+    <strong>Camera</strong><br>
+    Drag — orbit · Scroll — zoom · Right-drag — pan
+  </div>
+  <div id="model-panel" class="panel" hidden>
+    <h2>Model rotation</h2>
+    <label><span>X</span><input type="range" id="rot-x" min="-180" max="180" value="180" step="1"></label>
+    <label><span>Y</span><input type="range" id="rot-y" min="-180" max="180" value="0" step="1"></label>
+    <label><span>Z</span><input type="range" id="rot-z" min="-180" max="180" value="0" step="1"></label>
+    <button type="button" id="rot-log">Log values to console</button>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"
+    }
+  }
+  </script>
 
   <script type="module">
     import * as THREE from 'three';
     import * as GaussianSplats3D from 'https://cdn.jsdelivr.net/npm/@mkkellogg/gaussian-splats-3d@0.4.5/build/gaussian-splats-3d.module.min.js';
 
-    // --- CONFIG ---
-    const SPLAT_FILE     = './model.splat';
-    const CAMERA_HEIGHT  = 0.8;
-    const ORBIT_RADIUS   = 2.8;
-    const ORBIT_SPEED    = 0.004;
-    const LOOK_AT_HEIGHT = 0.6;
+    // ─── CONFIG (Spline-style embed defaults) ───────────────────────────────
+    const CONFIG = {
+      splatFile: './model.splat',
+      // Model orientation in degrees — set after tuning in ?debug=1
+      modelRotationDeg: { x: 180, y: 0, z: 0 },
+      // Model size (1 = original, 0.8 = 80%, etc.)
+      modelScale: 0.7,
+      // Camera auto-orbit (matches original Spline embed)
+      autoRotate: true,
+      orbitSpeed: 0.004,
+      // Larger = camera farther away = model looks smaller
+      orbitRadius: 3.2,
+      cameraHeight: 0.1,
+      lookAt: [0, 0, 0],
+      background: 0xffffff,
+    };
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // --- VIEWER ---
+    const DEBUG = new URLSearchParams(location.search).has('debug');
+    const DEG = Math.PI / 180;
+
+    function eulerToQuaternion(xDeg, yDeg, zDeg) {
+      const q = new THREE.Quaternion();
+      q.setFromEuler(new THREE.Euler(xDeg * DEG, yDeg * DEG, zDeg * DEG));
+      return [q.x, q.y, q.z, q.w];
+    }
+
     const viewer = new GaussianSplats3D.Viewer({
-      selfDrivenMode: false,
+      selfDrivenMode: !CONFIG.autoRotate,
       sharedMemoryForWorkers: false,
-      useBuiltInControls: false,
+      useBuiltInControls: DEBUG,
       ignoreDevicePixelRatio: false,
-      gpuAcceleratedSort: true,
+      gpuAcceleratedSort: false,
       halfPrecisionCovariancesOnGPU: true,
-      dynamicScene: false,
+      dynamicScene: DEBUG,
       webXRMode: GaussianSplats3D.WebXRMode.None,
       renderMode: GaussianSplats3D.RenderMode.Always,
-      sceneRevealMode: GaussianSplats3D.SceneRevealMode.Gradual,
+      sceneRevealMode: GaussianSplats3D.SceneRevealMode.Instant,
       logLevel: GaussianSplats3D.LogLevel.None,
+      backgroundColor: new THREE.Color(CONFIG.background),
+      initialCameraPosition: [0, CONFIG.cameraHeight, CONFIG.orbitRadius],
+      initialCameraLookAt: CONFIG.lookAt,
     });
 
-    await viewer.addSplatScene(SPLAT_FILE, {
+    viewer.loadingSpinner?.hide();
+    viewer.loadingProgressBar?.hide();
+
+    const { x, y, z } = CONFIG.modelRotationDeg;
+    const s = CONFIG.modelScale;
+
+    await viewer.addSplatScene(CONFIG.splatFile, {
       splatAlphaRemovalThreshold: 5,
       showLoadingUI: false,
       progressiveLoad: false,
+      rotation: eulerToQuaternion(x, y, z),
+      scale: [s, s, s],
     });
 
-    // Set white background on the renderer directly
-    viewer.renderer.setClearColor(0xffffff, 1);
+    viewer.loadingSpinner?.hide();
+    viewer.loadingProgressBar?.hide();
 
-    viewer.start();
+    if (DEBUG) {
+      document.getElementById('debug-banner').hidden = false;
+      document.getElementById('controls-hint').hidden = false;
+      document.getElementById('model-panel').hidden = false;
 
-    // Hide loading screen
-    const loading = document.getElementById('loading');
-    loading.classList.add('hidden');
-    setTimeout(() => loading.remove(), 700);
+      const splatScene = viewer.getSplatScene(0);
+      const sliders = {
+        x: document.getElementById('rot-x'),
+        y: document.getElementById('rot-y'),
+        z: document.getElementById('rot-z'),
+      };
+      sliders.x.value = String(x);
+      sliders.y.value = String(y);
+      sliders.z.value = String(z);
 
-    // --- AUTO-ROTATION ---
-    let angle = 0;
-    const target = new THREE.Vector3(0, LOOK_AT_HEIGHT, 0);
+      function applyModelRotation() {
+        splatScene.rotation.set(
+          Number(sliders.x.value) * DEG,
+          Number(sliders.y.value) * DEG,
+          Number(sliders.z.value) * DEG,
+        );
+      }
 
-    function animate() {
-      angle += ORBIT_SPEED;
-      viewer.camera.position.set(
-        Math.sin(angle) * ORBIT_RADIUS,
-        CAMERA_HEIGHT,
-        Math.cos(angle) * ORBIT_RADIUS
-      );
-      viewer.camera.lookAt(target);
-      viewer.camera.up.set(0, 1, 0);
-      viewer.update();
-      viewer.render();
+      Object.values(sliders).forEach((el) => el.addEventListener('input', applyModelRotation));
+      applyModelRotation();
+
+      document.getElementById('rot-log').addEventListener('click', () => {
+        console.log('modelRotationDeg:', {
+          x: Number(sliders.x.value),
+          y: Number(sliders.y.value),
+          z: Number(sliders.z.value),
+        });
+      });
+
+      viewer.start();
+    } else if (CONFIG.autoRotate) {
+      const target = new THREE.Vector3(...CONFIG.lookAt);
+      let angle = 0;
+
+      function animate() {
+        angle += CONFIG.orbitSpeed;
+        const xPos = Math.sin(angle) * CONFIG.orbitRadius;
+        const zPos = Math.cos(angle) * CONFIG.orbitRadius;
+        viewer.camera.position.set(xPos, CONFIG.cameraHeight, zPos);
+        viewer.camera.lookAt(target);
+        viewer.camera.up.set(0, 1, 0);
+        viewer.update();
+        viewer.render();
+        requestAnimationFrame(animate);
+      }
+
       requestAnimationFrame(animate);
+    } else {
+      viewer.start();
     }
-
-    requestAnimationFrame(animate);
   </script>
 </body>
 </html>
