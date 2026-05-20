@@ -145,12 +145,18 @@
       return [q.x, q.y, q.z, q.w];
     }
 
+    // External renderer must be in the DOM before Viewer init (library skips setup otherwise)
+    const container = document.createElement('div');
+    container.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+    document.body.appendChild(container);
+
     const renderer = new THREE.WebGLRenderer({
       alpha: true,
       antialias: false,
-      preserveDrawingBuffer: true,
     });
     renderer.setClearColor(0x000000, 0);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
 
     const viewer = new GaussianSplats3D.Viewer({
       renderer,
@@ -172,6 +178,19 @@
 
     viewer.loadingSpinner?.hide();
     viewer.loadingProgressBar?.hide();
+
+    function fitRenderer() {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h);
+      if (viewer.camera?.isPerspectiveCamera) {
+        viewer.camera.aspect = w / h;
+        viewer.camera.updateProjectionMatrix();
+      }
+    }
+    fitRenderer();
+    new ResizeObserver(fitRenderer).observe(container);
 
     const { x, y, z } = CONFIG.modelRotationDeg;
     const s = CONFIG.modelScale;
