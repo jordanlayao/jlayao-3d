@@ -62,13 +62,13 @@ Replace the Spline embed with an iframe:
   width="100%"
   height="100%"
   frameborder="0"
-  style="border:0; background:#fff;"
+  style="border:0; background:transparent;"
   allow="fullscreen"
   loading="lazy"
 ></iframe>
 ```
 
-Match the frame size to your previous Spline block. Background is white (`#ffffff`) to align with the site.
+Match the frame size to your previous Spline block. The viewer background is transparent so your Framer page shows through.
 
 ## Config
 

@@ -9,7 +9,7 @@
     html, body {
       width: 100%;
       height: 100%;
-      background: #ffffff;
+      background: transparent;
       overflow: hidden;
     }
     canvas {
@@ -133,7 +133,6 @@
       orbitRadius: 3.2,
       cameraHeight: 0.1,
       lookAt: [0, 0, 0],
-      background: 0xffffff,
     };
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -146,7 +145,15 @@
       return [q.x, q.y, q.z, q.w];
     }
 
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: false,
+      preserveDrawingBuffer: true,
+    });
+    renderer.setClearColor(0x000000, 0);
+
     const viewer = new GaussianSplats3D.Viewer({
+      renderer,
       selfDrivenMode: !CONFIG.autoRotate,
       sharedMemoryForWorkers: false,
       useBuiltInControls: DEBUG,
@@ -159,7 +166,6 @@
       renderMode: GaussianSplats3D.RenderMode.Always,
       sceneRevealMode: GaussianSplats3D.SceneRevealMode.Instant,
       logLevel: GaussianSplats3D.LogLevel.None,
-      backgroundColor: new THREE.Color(CONFIG.background),
       initialCameraPosition: [0, CONFIG.cameraHeight, CONFIG.orbitRadius],
       initialCameraLookAt: CONFIG.lookAt,
     });
